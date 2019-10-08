@@ -8,11 +8,11 @@ using System.Windows;
 // アセンブリに関連付けられている情報を変更するには、
 // これらの属性値を変更してください。
 [assembly: AssemblyTitle("Pixtrim2")]
-[assembly: AssemblyDescription("")]
+[assembly: AssemblyDescription("クリップボードの画像を切り抜いて保存")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
 [assembly: AssemblyProduct("Pixtrim2")]
-[assembly: AssemblyCopyright("Copyright ©  2019")]
+[assembly: AssemblyCopyright("Copyright ©  2019 午後わてん")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
