@@ -14,8 +14,6 @@ using System.Windows.Navigation;
 using System.Windows.Shapes;
 using System.Collections.ObjectModel;
 
-
-using Microsoft.WindowsAPICodePack.Dialogs;//フォルダ選択用
 using System.ComponentModel;
 
 
@@ -43,17 +41,13 @@ namespace Pixtrim2
         //private BitmapSource PastBitmap;//前回クリップボードから取得した画像、比較用、不具合回避用→不具合じゃなかったので必要なくなった
         private ContextMenu MyListBoxContextMenu;
         private System.Media.SoundPlayer MySound;//画像取得時の音
-        private ScaleTransform MyCanvasScale;//MyCanvasの拡大率
+
 
         public MainWindow()
         {
             InitializeComponent();
 
-            IDataObject data = Clipboard.GetDataObject();
-            string[] tako = data.GetFormats();
-            //System.IO.MemoryStream stream = data.GetData("PNG");
-            var neko = data.GetData("PNG");
-
+        
 
             ButtonTest.Click += ButtonTest_Click;
             ButtonSave.Click += ButtonSave_Click;
@@ -67,6 +61,16 @@ namespace Pixtrim2
             ButtonRemoveTrimSetting.Click += ButtonRemoveTrimSetting_Click;
             ButtonZoomIn.Click += ButtonZoomIn_Click;
             ButtonZoomOut.Click += ButtonZoomOut_Click;
+            //scale
+            ButtonScale1_9.Click += (s, e) => MyNumericSaveScale.MyValue = 1 / 9m;
+            ButtonScale1_8.Click += (s, e) => MyNumericSaveScale.MyValue = 1 / 8m;
+            ButtonScale1_7.Click += (s, e) => MyNumericSaveScale.MyValue = 1 / 7m;
+            ButtonScale1_6.Click += (s, e) => MyNumericSaveScale.MyValue = 1 / 6m;
+            ButtonScale1_5.Click += (s, e) => MyNumericSaveScale.MyValue = 1 / 5m;
+            ButtonScale1_4.Click += (s, e) => MyNumericSaveScale.MyValue = 1 / 4m;
+            ButtonScale1_3.Click += (s, e) => MyNumericSaveScale.MyValue = 1 / 3m;
+            ButtonScale1_2.Click += (s, e) => MyNumericSaveScale.MyValue = 1 / 2m;
+            ButtonScale1_1.Click += (s, e) => MyNumericSaveScale.MyValue = 1;
 
             //音声
             ButtonSoundSelect.Click += ButtonSoundSelect_Click;
@@ -145,7 +149,9 @@ namespace Pixtrim2
                 MySetBinding();
             }
 
-            MyCanvasScale = (ScaleTransform)MyCanvas.RenderTransform;
+
+            //MyCanvasの初期設定
+            MyCanvas.RenderTransform = new ScaleTransform(1, 1);
             //MyCanvasの拡大表示方式をニアレストネイバー法に指定
             RenderOptions.SetBitmapScalingMode(MyCanvas, BitmapScalingMode.NearestNeighbor);
 
@@ -154,13 +160,19 @@ namespace Pixtrim2
 
         private void ButtonZoomOut_Click(object sender, RoutedEventArgs e)
         {
-            MyCanvasScale.ScaleX ++;
-            MyCanvasScale.ScaleY ++;
+            //表示の縮小、等倍以下にはしない
+            ScaleTransform scale = (ScaleTransform)MyCanvas.RenderTransform;
+            if (scale.ScaleX == 1) return;
+            scale.ScaleX--;
+            scale.ScaleY--;
         }
 
         private void ButtonZoomIn_Click(object sender, RoutedEventArgs e)
         {
-            MyCanvas.RenderTransform = new ScaleTransform(2, 2);
+            //表示の拡大、整数倍
+            ScaleTransform scale = (ScaleTransform)MyCanvas.RenderTransform;
+            scale.ScaleX++;
+            scale.ScaleY++;
         }
 
 
@@ -298,6 +310,7 @@ namespace Pixtrim2
                 return;
             }
             ClipboardWatcher.Stop();//監視を停止
+
             BitmapSource bitmap = MakeSaveBitmap(item.Source, false);
             Clipboard.Clear();//クリップボードクリア(おまじない)
             //Clipboard.SetDataObject(item.Source);//コレだとなぜかコピーされない
@@ -310,27 +323,29 @@ namespace Pixtrim2
             {
                 MessageBox.Show("コピーに失敗しました");
             }
+
             ClipboardWatcher.Start();//監視を再開
         }
 
 
         private bool MySetImageClipboard(BitmapSource bitmap)
         {
-
             int count = 1;
-            int limit = 5;//試行回数、5あれば十分だけど、失敗するようなら10とかにする
+            int limit = 5;//試行回数、5あれば十分
             do
             {
                 try
                 {
                     //MySleep(10);//10ミリ秒アプリを停止、コレがあると成功率が上がる気がする
-                    Clipboard.SetImage(bitmap);//ここで取得できない時がある
+                    Clipboard.SetImage(bitmap);//稀にエラー
+                    //MessageBox.Show($"{count}");
                     return true;
                 }
                 catch (Exception)
                 {
+                    count++;
                 }
-                finally { count++; }
+                finally { }
             } while (limit >= count);
 
             return false;
@@ -825,16 +840,13 @@ namespace Pixtrim2
 
         //保存フォルダ選択
         private void ButtonSaveDirSelect_Click(object sender, RoutedEventArgs e)
-        {
-            var dialog = new Microsoft.WindowsAPICodePack.Dialogs.CommonOpenFileDialog();
-            string path = CheckDir(MyConfig.SavaDir);//フォルダの存在確認
-            dialog.InitialDirectory = path;
-            dialog.IsFolderPicker = true;//フォルダ選択あり
-
-            if (dialog.ShowDialog(this) == CommonFileDialogResult.Ok)
+        {            
+            var dialog = new FolderDialog(CheckDir(MyConfig.SavaDir),this);
+            dialog.ShowDialog();
+            if (dialog.DialogResult == true)
             {
                 //TextBoxSaveDir.Text = dialog.FileName;//これだとBindingが解けてしまう
-                MyConfig.SavaDir = dialog.FileName;
+                MyConfig.SavaDir = dialog.GetFullPath();
             }
 
         }
@@ -1236,7 +1248,7 @@ namespace Pixtrim2
                     try
                     {
                         //MySleep(10);//10ミリ秒待機、意味ないかも
-                        bitmap = Clipboard.GetImage();//ここで取得できない時がある                      
+                        bitmap = Clipboard.GetImage();//ここで取得できない時がある
                     }
                     catch (Exception ex)
                     {
@@ -1294,6 +1306,11 @@ namespace Pixtrim2
             Name = name;
         }
     }
+
+
+
+
+
 
     /// <summary>
     /// 切り抜き範囲の設定データ用、アプリの設定ファイルにリストとして追加する
