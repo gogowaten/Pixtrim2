@@ -5,7 +5,10 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Pixtrim2"
         mc:Ignorable="d"
-        Title="MyDialogWindw" Height="450" Width="800">
+        Title="MyDialogWindw" Height="200" Width="400"
+        SizeToContent="WidthAndHeight"
+        WindowStyle="None"
+        WindowStartupLocation="CenterOwner">
   <Grid>
     <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
       <TextBox Name="MyTextBox" Margin="10,20,10,10"/>

@@ -47,7 +47,7 @@ namespace Pixtrim2
         {
             InitializeComponent();
 
-        
+
 
             ButtonTest.Click += ButtonTest_Click;
             ButtonSave.Click += ButtonSave_Click;
@@ -100,7 +100,7 @@ namespace Pixtrim2
             TextBoxDammy.PreviewKeyDown += MyTrimThumb_KeyDown;
             MyTrimThumb.PreviewMouseDown += (o, e) => { TextBoxDammy.Focus(); Keyboard.Focus(TextBoxDammy); };
             MyTrimThumb.MouseDown += (o, e) => { TextBoxDammy.Focus(); };
-            MyTrimThumb.SetBackGroundColor(Color.FromArgb(100, 0, 0, 0));
+            MyTrimThumb.SetBackGroundColor(Color.FromArgb(100, 128, 128, 128));
             MyCanvas.Children.Add(MyTrimThumb);
 
 
@@ -128,7 +128,10 @@ namespace Pixtrim2
             {
                 LoadConfig(fullPath);
                 //音声ファイルの読み込み
-                MySound = new System.Media.SoundPlayer(MyConfig.SoundDir);
+                if (System.IO.File.Exists(MyConfig.SoundDir))
+                {
+                    MySound = new System.Media.SoundPlayer(MyConfig.SoundDir);
+                }
             }
             //初回起動時は設定ファイルがないので初期値を指定する
             else
@@ -165,6 +168,7 @@ namespace Pixtrim2
             if (scale.ScaleX == 1) return;
             scale.ScaleX--;
             scale.ScaleY--;
+            CanvasSizeSuitable(scale.ScaleX);//MyCanvasを適切なサイズに変更
         }
 
         private void ButtonZoomIn_Click(object sender, RoutedEventArgs e)
@@ -173,6 +177,15 @@ namespace Pixtrim2
             ScaleTransform scale = (ScaleTransform)MyCanvas.RenderTransform;
             scale.ScaleX++;
             scale.ScaleY++;
+            CanvasSizeSuitable(scale.ScaleX);//MyCanvasを適切なサイズに変更
+        }
+        //MyCanvasを適切なサイズに変更
+        private void CanvasSizeSuitable(double scale)
+        {
+            //Canvasのサイズ変更
+            var bn = (MyBitmapAndName)MyListBox.SelectedItem;
+            MyCanvas.Width = bn.Source.PixelWidth * scale + 10;
+            MyCanvas.Height = bn.Source.PixelHeight * scale + 10;
         }
 
 
@@ -197,15 +210,16 @@ namespace Pixtrim2
         {
             AddTrimSetting();
         }
+        //名前を付けてリストに追加、設定保存
         private void AddTrimSetting()
         {
             //名前入力ダイアログボックス表示
-            MyDialogWindow dialog = new MyDialogWindow();
+            MyDialogWindow dialog = new MyDialogWindow(this);
             dialog.ShowDialog();
 
             if (dialog.DialogResult == true)
             {
-                if (dialog.Answer == "") return;
+                if (dialog.Answer == "") return;//空白なら何もしないで終了
                 //設定作成
                 TrimConfig trimConfig = new TrimConfig
                 {
@@ -410,7 +424,7 @@ namespace Pixtrim2
             //MyConfig.SoundDir;
             TextBoxSoundDir.SetBinding(TextBox.TextProperty, MakeBinding(nameof(Config.SoundDir)));
             //MyConfig.FileName;
-            TextBoxFileName.SetBinding(TextBox.TextProperty, MakeBinding(nameof(Config.FileName)));
+            //TextBoxFileName.SetBinding(TextBox.TextProperty, MakeBinding(nameof(Config.FileName)));
             //MyConfig.SavaDir;
             TextBoxSaveDir.SetBinding(TextBox.TextProperty, MakeBinding(nameof(Config.SavaDir)));
             //MyConfig.IsAutoRemoveSavedItem;
@@ -511,6 +525,8 @@ namespace Pixtrim2
             var items = MyComboBoxTrimSetting.Items;
             var sc = MyComboBoxTrimSetting.Items.SourceCollection;
             MyComboBoxTrimSetting.Items.Refresh();
+            var top = MyNumericY.MyValue;
+            var nu = MyNumericY.MyValue2;
 
         }
 
@@ -840,8 +856,8 @@ namespace Pixtrim2
 
         //保存フォルダ選択
         private void ButtonSaveDirSelect_Click(object sender, RoutedEventArgs e)
-        {            
-            var dialog = new FolderDialog(CheckDir(MyConfig.SavaDir),this);
+        {
+            var dialog = new FolderDialog(CheckDir(MyConfig.SavaDir), this);
             dialog.ShowDialog();
             if (dialog.DialogResult == true)
             {
@@ -1201,7 +1217,8 @@ namespace Pixtrim2
             //if (IsBitmapEqual(bitmap, PastBitmap)) return;
             //PastBitmap = bitmap;
 
-            string name = MyConfig.FileName + GetStringNowTime();
+            string name = GetStringNowTime();
+            //string name = MyConfig.FileName + GetStringNowTime();
 
             //自動保存モードならファイルに保存
             if (CheckBoxIsAutoSave.IsChecked == true)
@@ -1417,6 +1434,7 @@ namespace Pixtrim2
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
 
+        //private List<TrimConfig> TrimConfigList = new List<TrimConfig>();
 
         private decimal _Width;
         public decimal Width
@@ -1472,18 +1490,18 @@ namespace Pixtrim2
             }
         }
 
-        private string _FileName;
-        public string FileName
-        {
-            get => _FileName;
-            set
-            {
-                if (_FileName == value)
-                    return;
-                _FileName = value;
-                RaisePropertyChanged();
-            }
-        }
+        //private string _FileName;
+        //public string FileName
+        //{
+        //    get => _FileName;
+        //    set
+        //    {
+        //        if (_FileName == value)
+        //            return;
+        //        _FileName = value;
+        //        RaisePropertyChanged();
+        //    }
+        //}
 
         private string _SavaDir;
         public string SavaDir
@@ -1605,7 +1623,7 @@ namespace Pixtrim2
         }
 
         //切り抜き範囲の設定リスト
-        private List<TrimConfig> _TrimConfigList;
+        private List<TrimConfig> _TrimConfigList = new List<TrimConfig>();
         public List<TrimConfig> TrimConfigList
         {
             get => _TrimConfigList;

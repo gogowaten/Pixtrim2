@@ -19,9 +19,10 @@ namespace Pixtrim2
     /// </summary>
     public partial class MyDialogWindow : Window
     {
-        public MyDialogWindow()
+        public MyDialogWindow(Window owner)
         {
             InitializeComponent();
+            this.Owner = owner;
             MyTextBox.Focus();
             MyTextBox.KeyDown += MyTextBox_KeyDown;
         }
