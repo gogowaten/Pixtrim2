@@ -132,6 +132,8 @@ namespace Pixtrim2
                 {
                     MySound = new System.Media.SoundPlayer(MyConfig.SoundDir);
                 }
+                //音声ファイル指定なしの場合は内蔵音源使用
+                else { MySound = new System.Media.SoundPlayer("pekowave2.wav"); }
             }
             //初回起動時は設定ファイルがないので初期値を指定する
             else
@@ -148,6 +150,9 @@ namespace Pixtrim2
                 MyConfig.IsClipboardWatch = false;
                 MyConfig.IsPlaySound = false;
                 MyConfig.IsAutoSave = false;
+
+                //内蔵音源
+                MySound = new System.Media.SoundPlayer("pekowave2.wav");
 
                 MySetBinding();
             }
@@ -168,7 +173,7 @@ namespace Pixtrim2
             if (scale.ScaleX == 1) return;
             scale.ScaleX--;
             scale.ScaleY--;
-            CanvasSizeSuitable(scale.ScaleX);//MyCanvasを適切なサイズに変更
+            CanvasSizeSuitable();//MyCanvasを適切なサイズに変更
         }
 
         private void ButtonZoomIn_Click(object sender, RoutedEventArgs e)
@@ -177,13 +182,16 @@ namespace Pixtrim2
             ScaleTransform scale = (ScaleTransform)MyCanvas.RenderTransform;
             scale.ScaleX++;
             scale.ScaleY++;
-            CanvasSizeSuitable(scale.ScaleX);//MyCanvasを適切なサイズに変更
+            CanvasSizeSuitable();//MyCanvasを適切なサイズに変更
         }
         //MyCanvasを適切なサイズに変更
-        private void CanvasSizeSuitable(double scale)
+        private void CanvasSizeSuitable()
         {
-            //Canvasのサイズ変更
             var bn = (MyBitmapAndName)MyListBox.SelectedItem;
+            if (bn == null) return;
+            //Canvasのサイズ変更
+            ScaleTransform st = (ScaleTransform)MyCanvas.RenderTransform;
+            double scale = st.ScaleX;
             MyCanvas.Width = bn.Source.PixelWidth * scale + 10;
             MyCanvas.Height = bn.Source.PixelHeight * scale + 10;
         }
@@ -540,9 +548,7 @@ namespace Pixtrim2
         private void PlaySoundFile()
         {
             try
-            {
-                //var so = new System.Media.SoundPlayer(MyConfig.SoundDir);
-                //so.Play();
+            {                
                 MySound.Play();
             }
             catch (Exception)
@@ -1246,8 +1252,7 @@ namespace Pixtrim2
             MyListBox.ScrollIntoView(source);//選択アイテムまでスクロール
 
             //Canvasのサイズを画像のサイズに合わせる、これがないとスクロールバーが出ない
-            MyCanvas.Width = bitmap.PixelWidth;
-            MyCanvas.Height = bitmap.PixelHeight;
+            CanvasSizeSuitable();
 
         }
 
