@@ -138,23 +138,8 @@ namespace Pixtrim2
             //初回起動時は設定ファイルがないので初期値を指定する
             else
             {
-                MyConfig.Height = 100;
-                MyConfig.JpegQuality = 97;
-                MyConfig.Left = 100;
-                MyConfig.SavaDir = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-                MyConfig.SaveImageType = SaveImageType.png;
-                MyConfig.SaveScale = 1;
-                MyConfig.Top = 100;
-                MyConfig.Width = 100;
-                MyConfig.IsAutoRemoveSavedItem = false;
-                MyConfig.IsClipboardWatch = false;
-                MyConfig.IsPlaySound = false;
-                MyConfig.IsAutoSave = false;
+                SetDefaultConfig();
 
-                //内蔵音源
-                MySound = new System.Media.SoundPlayer("pekowave2.wav");
-
-                MySetBinding();
             }
 
 
@@ -164,6 +149,28 @@ namespace Pixtrim2
             RenderOptions.SetBitmapScalingMode(MyCanvas, BitmapScalingMode.NearestNeighbor);
 
 
+        }
+
+        //既定値に設定
+        private void SetDefaultConfig()
+        {
+            MyConfig.Height = 100;
+            MyConfig.JpegQuality = 97;
+            MyConfig.Left = 100;
+            MyConfig.SavaDir = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+            MyConfig.SaveImageType = SaveImageType.png;
+            MyConfig.SaveScale = 1;
+            MyConfig.Top = 100;
+            MyConfig.Width = 100;
+            MyConfig.IsAutoRemoveSavedItem = false;
+            MyConfig.IsClipboardWatch = false;
+            MyConfig.IsPlaySound = false;
+            MyConfig.IsAutoSave = false;
+
+            //内蔵音源
+            MySound = new System.Media.SoundPlayer("pekowave2.wav");
+
+            MySetBinding();
         }
 
         private void ButtonZoomOut_Click(object sender, RoutedEventArgs e)
@@ -520,6 +527,8 @@ namespace Pixtrim2
             {
                 MessageBox.Show($"なんかエラーで設定の読み込みできんかったわ\n" +
                     $"{ex.Message}");
+                //既定値に設定する
+                SetDefaultConfig();
                 return false;
             }
         }
@@ -535,6 +544,7 @@ namespace Pixtrim2
             MyComboBoxTrimSetting.Items.Refresh();
             var top = MyNumericY.MyValue;
             var nu = MyNumericY.MyValue2;
+            var left = MyNumericX.MyValue;
 
         }
 
@@ -548,7 +558,7 @@ namespace Pixtrim2
         private void PlaySoundFile()
         {
             try
-            {                
+            {
                 MySound.Play();
             }
             catch (Exception)
@@ -881,13 +891,27 @@ namespace Pixtrim2
         //画像の保存
         private void ButtonSave_Click(object sender, RoutedEventArgs e)
         {
+            SaveImage();
+        }
+
+        //画像の保存
+        private void SaveImage()
+        {
             if (ListMyBitmapSource.Count == 0) return;
-            //切り抜き範囲チェック、一つでも範囲外なら保存しない
+            //保存フォルダの存在チェック
+            if (CheckSaveFolderExists() == false)
+            {
+                MessageBox.Show("指定された保存場所が見つからないので保存できないよ");
+                return;
+            }
+
+            //切り抜き範囲チェック
+            //一つでも範囲外なら保存しない
             foreach (var item in ListMyBitmapSource)
             {
                 if (CheckCropRect(item.Source) == false)
                 {
-                    string str = $"切り抜き範囲が画像範囲外なので保存できない\n" +
+                    string str = $"切り抜き範囲が画像範囲外なので保存できないよ\n" +
                         $"{item.Name}";
                     MyListBox.SelectedItem = item;
                     MyListBox.ScrollIntoView(item);
@@ -914,8 +938,11 @@ namespace Pixtrim2
             MessageBox.Show("保存完了");
         }
 
-
-
+        //保存フォルダの存在チェック
+        private bool CheckSaveFolderExists()
+        {
+            return System.IO.Directory.Exists(MyConfig.SavaDir);
+        }
 
 
         /// <summary>
@@ -1361,8 +1388,8 @@ namespace Pixtrim2
             }
         }
 
-        private decimal _Width;
-        public decimal Width
+        private int _Width;
+        public int Width
         {
             get => _Width;
             set
@@ -1374,8 +1401,8 @@ namespace Pixtrim2
             }
         }
 
-        private decimal _Height;
-        public decimal Height
+        private int _Height;
+        public int Height
         {
             get => _Height;
             set
@@ -1387,8 +1414,8 @@ namespace Pixtrim2
             }
         }
 
-        private decimal _Left;
-        public decimal Left
+        private int _Left;
+        public int Left
         {
             get => _Left;
             set
@@ -1401,8 +1428,8 @@ namespace Pixtrim2
             }
         }
 
-        private decimal _Top;
-        public decimal Top
+        private int _Top;
+        public int Top
         {
             get => _Top;
             set
@@ -1441,8 +1468,8 @@ namespace Pixtrim2
 
         //private List<TrimConfig> TrimConfigList = new List<TrimConfig>();
 
-        private decimal _Width;
-        public decimal Width
+        private int _Width;
+        public int Width
         {
             get => _Width;
             set
@@ -1454,8 +1481,8 @@ namespace Pixtrim2
             }
         }
 
-        private decimal _Height;
-        public decimal Height
+        private int _Height;
+        public int Height
         {
             get => _Height;
             set
@@ -1467,8 +1494,8 @@ namespace Pixtrim2
             }
         }
 
-        private decimal _Left;
-        public decimal Left
+        private int _Left;
+        public int Left
         {
             get => _Left;
             set
@@ -1481,8 +1508,8 @@ namespace Pixtrim2
             }
         }
 
-        private decimal _Top;
-        public decimal Top
+        private int _Top;
+        public int Top
         {
             get => _Top;
             set
@@ -1549,8 +1576,8 @@ namespace Pixtrim2
         }
 
 
-        private decimal _JpegQuality;
-        public decimal JpegQuality
+        private int _JpegQuality;
+        public int JpegQuality
         {
             get => _JpegQuality;
             set
