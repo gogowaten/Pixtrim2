@@ -303,7 +303,7 @@ namespace Pixtrim2
             item.Header = "削除(_D)";
             item.Click += Item_Click;
             MyListBoxContextMenu.Items.Add(item);
-            //メニューを表示するとき、アイテムがなければ直前でキャンセルして表示しない
+            //アイテムがなければ直前でキャンセルして表示しない
             MyListBox.ContextMenuOpening += (s, e) => { if (MyListBox.Items.Count == 0) e.Handled = true; };
 
 
@@ -322,14 +322,14 @@ namespace Pixtrim2
 
             item = new MenuItem();
             cm.Items.Add(item);
-            item.Header = "切り抜いてクリップボードにコピー";
-            item.Click += Item_Click1;
-
+            item.Header = "切り抜いてクリップボードにコピー";        
+            item.Click += (s, e) => { ToClipboardImage(); };
         }
 
 
-        //クリップボードへ切り抜き画像をコピー、スケールも反映される
-        private void Item_Click1(object sender, RoutedEventArgs e)
+        
+        //クリップボードへ切り抜き画像をコピー、スケールも反映する
+        private void ToClipboardImage()
         {
             MyBitmapAndName item = (MyBitmapAndName)MyListBox.SelectedItem;
             if (item == null) return;
@@ -338,7 +338,8 @@ namespace Pixtrim2
                 MessageBox.Show("切り抜き範囲が画像内に収まっていないので処理できませんでした");
                 return;
             }
-            ClipboardWatcher.Stop();//監視を停止
+            //監視を停止
+            if (MyConfig.IsClipboardWatch) { ClipboardWatcher.Stop(); }
 
             BitmapSource bitmap = MakeSaveBitmap(item.Source, false);
             Clipboard.Clear();//クリップボードクリア(おまじない)
@@ -353,7 +354,8 @@ namespace Pixtrim2
                 MessageBox.Show("コピーに失敗しました");
             }
 
-            ClipboardWatcher.Start();//監視を再開
+            //監視を再開
+            if (MyConfig.IsClipboardWatch) { ClipboardWatcher.Start(); }
         }
 
 
