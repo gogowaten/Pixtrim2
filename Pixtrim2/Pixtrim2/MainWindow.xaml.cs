@@ -47,7 +47,8 @@ namespace Pixtrim2
         {
             InitializeComponent();
 
-
+            var appInfo = System.Diagnostics.FileVersionInfo.GetVersionInfo(System.Reflection.Assembly.GetExecutingAssembly().Location);
+            this.Title = appInfo.ProductName + " Ver." + appInfo.ProductVersion;
 
             ButtonTest.Click += ButtonTest_Click;
             ButtonSave.Click += ButtonSave_Click;
@@ -273,17 +274,10 @@ namespace Pixtrim2
         }
 
         //今のクリップボードから画像を追加
-        //この場合もし自動保存設定なら一時停止する、追加したら戻すようにしようとしたけどやっぱやめた
         private void ButtonAddItemFromClipboard_Click(object sender, RoutedEventArgs e)
         {
             BitmapSource bitmap = GetBitmapSource();
             if (bitmap == null) return;
-            //if (MyConfig.IsAutoSave)
-            //{
-            //    MyConfig.IsAutoSave = false;
-            //    AddBitmapToList(bitmap);
-            //    MyConfig.IsAutoSave = true;
-            //}
             AddBitmapToList(bitmap);
         }
 
@@ -322,12 +316,12 @@ namespace Pixtrim2
 
             item = new MenuItem();
             cm.Items.Add(item);
-            item.Header = "切り抜いてクリップボードにコピー";        
+            item.Header = "切り抜いてクリップボードにコピー";
             item.Click += (s, e) => { ToClipboardImage(); };
         }
 
 
-        
+
         //クリップボードへ切り抜き画像をコピー、スケールも反映する
         private void ToClipboardImage()
         {
@@ -538,6 +532,9 @@ namespace Pixtrim2
 
         private void ButtonTest_Click(object sender, RoutedEventArgs e)
         {
+
+
+
             var neko = MyComboBoxTrimSetting.SelectedItem;
             var index = MyComboBoxTrimSetting.SelectedIndex;
             var con = MyConfig;
@@ -554,7 +551,15 @@ namespace Pixtrim2
         #region 音
         private void ButtonSoundPlay_Click(object sender, RoutedEventArgs e)
         {
-            PlaySoundFile();
+            try
+            {
+                MySound.Play();
+            }
+            catch (Exception)
+            {
+                MessageBox.Show($"指定されたファイルは再生できなかったよ\n" +
+                    $"再生できる音声ファイルは、wav形式だけ");
+            }
         }
         //音声ファイル再生
         private void PlaySoundFile()
@@ -565,8 +570,6 @@ namespace Pixtrim2
             }
             catch (Exception)
             {
-                //MessageBox.Show($"指定されたファイルは再生できなかったよ\n" +
-                //    $"再生できる音声ファイルは、wav形式だけ");
             }
         }
         //音声ファイルの選択
@@ -1003,8 +1006,8 @@ namespace Pixtrim2
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"{fileName}はファイル保存できなかったよ\n" +
-                    $"{ex.Message}");
+                //MessageBox.Show($"{fileName}はファイル保存できなかったよ\n" +
+                //    $"{ex.Message}");
                 return false;
             }
 
@@ -1202,21 +1205,9 @@ namespace Pixtrim2
 
 
         #region クリップボードから画像取得
-        //クリップボード更新時に画像取得してリストに追加、名前もつける
-        //なぜか更新がなくても5分間隔で通知が来るので、前回の画像と比較してから追加している
+        //クリップボード更新時
         private void ClipboardWatcher_DrawClipboard(object sender, EventArgs e)
         {
-            //if (Clipboard.ContainsImage())
-            //{
-            //    BitmapSource bitmap = null;
-            //    int count = 1;
-            //    int limit = 5;
-            //    do
-            //    {
-            //        try
-            //        {
-            //            bitmap = Clipboard.GetImage();//ここで取得できない時がある
-
             //            //エクセルコピーテストここから
             //            //var data = Clipboard.GetDataObject();
             //            //var mStream = (System.IO.MemoryStream)data.GetData("PNG");//これがいい
@@ -1239,21 +1230,42 @@ namespace Pixtrim2
             //            //}
             //            //エクセルコピーテストここまで
 
-
+            //クリップボードから画像取得
             BitmapSource bitmap = GetBitmapSource();
             if (bitmap == null) return;
+
             AddBitmapToList(bitmap);
         }
 
         //Bitmapをリストに追加
+        private void AddBitmapToList2(BitmapSource bitmap)
+        {
+            
+            //自動保存and自動削除モードならリストに追加しない
+            //自動保存に失敗したときだけリストに追加
+            if (MyConfig.IsAutoSave && MyConfig.IsAutoRemoveSavedItem)
+            {
+                if (CheckCropRect(bitmap))
+                {
+                    if (SaveBitmap(MakeSaveBitmap(bitmap, false), GetStringNowTime()))
+                    {
+
+                    }
+                }
+                else
+                {
+                   
+                }
+            }
+            //リストに追加する
+            else
+            {
+
+            }
+        }
         private void AddBitmapToList(BitmapSource bitmap)
         {
-            ////画像比較、同じなら何もしないでreturn、違ったらリストに追加
-            //if (IsBitmapEqual(bitmap, PastBitmap)) return;
-            //PastBitmap = bitmap;
-
             string name = GetStringNowTime();
-            //string name = MyConfig.FileName + GetStringNowTime();
 
             //自動保存モードならファイルに保存
             if (CheckBoxIsAutoSave.IsChecked == true)
@@ -1261,28 +1273,66 @@ namespace Pixtrim2
                 //切り抜き範囲チェック
                 if (CheckCropRect(bitmap) == false)
                 {
+                    //画像と名前をリストに追加
+                    var myBitmap = new MyBitmapAndName(bitmap, name);
+                    AddToList(myBitmap);
+
+                    //Canvasのサイズを画像のサイズに合わせる、これがないとスクロールバーが出ない
+                    CanvasSizeSuitable();
+
                     MessageBox.Show("切り抜き範囲が画像内に収まっていないので保存できませんでした");
+
                 }
                 else
                 {
-                    SaveBitmap(MakeSaveBitmap(bitmap, false), name);
+                    //保存
+                    if (SaveBitmap(MakeSaveBitmap(bitmap, false), name))
+                    {
+                        //音声ファイル再生
+                        if (MyConfig.IsPlaySound == true) { PlaySoundFile(); }
+                    }
+                    //ほぞんできなかった場合はリストに追加する
+                    else
+                    {
+                        //画像と名前をリストに追加
+                        var myBitmap = new MyBitmapAndName(bitmap, name);
+                        AddToList(myBitmap);
+
+                        //Canvasのサイズを画像のサイズに合わせる、これがないとスクロールバーが出ない
+                        CanvasSizeSuitable();
+
+                        MessageBox.Show("保存できなかった");
+                    }
                 }
             }
-            //音声ファイル再生
-            if (MyConfig.IsPlaySound == true) { PlaySoundFile(); }
 
-            //自動保存and自動削除モードならここまで
-            if (MyConfig.IsAutoSave && MyConfig.IsAutoRemoveSavedItem) return;
 
-            //画像と名前をリストに追加
-            var source = new MyBitmapAndName(bitmap, name);
-            ListMyBitmapSource.Add(source);
-            MyListBox.SelectedItem = source;
-            MyListBox.ScrollIntoView(source);//選択アイテムまでスクロール
+            if (MyConfig.IsAutoRemoveSavedItem == false)
+            {
+                //画像と名前をリストに追加
+                var myBitmap = new MyBitmapAndName(bitmap, name);
+                AddToList(myBitmap);
 
-            //Canvasのサイズを画像のサイズに合わせる、これがないとスクロールバーが出ない
-            CanvasSizeSuitable();
+                //Canvasのサイズを画像のサイズに合わせる、これがないとスクロールバーが出ない
+                CanvasSizeSuitable();
 
+                //音声ファイル再生
+                if (MyConfig.IsPlaySound == true) { PlaySoundFile(); }
+            }
+
+
+            ////自動保存and自動削除モードならここまで
+            //if (MyConfig.IsAutoSave && MyConfig.IsAutoRemoveSavedItem) return;
+
+
+
+        }
+        //画像と名前をリストに追加
+        private void AddToList(MyBitmapAndName myBitmap)
+        {
+            ListMyBitmapSource.Add(myBitmap);
+            MyListBox.SelectedItem = myBitmap;
+            MyListBox.ScrollIntoView(myBitmap);//選択アイテムまでスクロール
         }
 
         //クリップボードから画像取得
