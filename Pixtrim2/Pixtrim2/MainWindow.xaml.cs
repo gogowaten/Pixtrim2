@@ -278,7 +278,7 @@ namespace Pixtrim2
         {
             BitmapSource bitmap = GetBitmapSource();
             if (bitmap == null) return;
-            AddBitmapToList(bitmap);
+            AddBitmapToList2(bitmap);
         }
 
 
@@ -332,10 +332,12 @@ namespace Pixtrim2
                 MessageBox.Show("切り抜き範囲が画像内に収まっていないので処理できませんでした");
                 return;
             }
-            //監視を停止
+            //監視を一時停止
             if (MyConfig.IsClipboardWatch) { ClipboardWatcher.Stop(); }
 
-            BitmapSource bitmap = MakeSaveBitmap(item.Source, false);
+            //画像作成
+            BitmapSource bitmap = MakeScaleBitmap(MakeCroppedBitmap(item.Source));
+
             Clipboard.Clear();//クリップボードクリア(おまじない)
             //Clipboard.SetDataObject(item.Source);//コレだとなぜかコピーされない
             //Clipboard.SetImage(bitmap);//コピー、たまに失敗する
@@ -348,7 +350,7 @@ namespace Pixtrim2
                 MessageBox.Show("コピーに失敗しました");
             }
 
-            //監視を再開
+            //監視を一時停止解除
             if (MyConfig.IsClipboardWatch) { ClipboardWatcher.Start(); }
         }
 
@@ -361,7 +363,6 @@ namespace Pixtrim2
             {
                 try
                 {
-                    //MySleep(10);//10ミリ秒アプリを停止、コレがあると成功率が上がる気がする
                     Clipboard.SetImage(bitmap);//稀にエラー
                     //MessageBox.Show($"{count}");
                     return true;
@@ -588,50 +589,6 @@ namespace Pixtrim2
 
         #region その他
 
-        ////        WPF、2つのBitmapSource比較をMD5ハッシュ値で行ってみた - 午後わてんのブログ
-        ////https://gogowaten.hatenablog.com/entry/2019/10/03/205130
-        //#region BitmapSourceの比較
-        ///// <summary>
-        ///// 2つのBitmapSourceが同じ画像(のすべてのピクセルの色)なのか判定する、MD5のハッシュ値を作成して比較
-        ///// </summary>
-        ///// <param name="bmp1"></param>
-        ///// <param name="bmp2"></param>
-        ///// <returns></returns>
-        //private bool IsBitmapEqual(BitmapSource bmp1, BitmapSource bmp2)
-        //{
-        //    if (bmp1 == null || bmp2 == null) return false;
-        //    //それぞれのハッシュ値を作成
-        //    var md5 = new System.Security.Cryptography.MD5CryptoServiceProvider();
-        //    byte[] h1 = md5.ComputeHash(MakeBitmapByte(bmp1));
-        //    byte[] h2 = md5.ComputeHash(MakeBitmapByte(bmp2));
-        //    md5.Clear();
-        //    //ハッシュ値を比較
-        //    return IsArrayEquals(h1, h2);
-
-        //}
-        ////2つのハッシュ値を比較
-        //private bool IsArrayEquals(byte[] h1, byte[] h2)
-        //{
-        //    for (int i = 0; i < h1.Length; i++)
-        //    {
-        //        if (h1[i] != h2[i])
-        //        {
-        //            return false;
-        //        }
-        //    }
-        //    return true;
-        //}
-        ////BitmapSourceをbyte配列に変換
-        //private byte[] MakeBitmapByte(BitmapSource bitmap)
-        //{
-        //    int w = bitmap.PixelWidth;
-        //    int h = bitmap.PixelHeight;
-        //    int stride = w * bitmap.Format.BitsPerPixel / 8;
-        //    byte[] pixels = new byte[h * stride];
-        //    bitmap.CopyPixels(new Int32Rect(0, 0, w, h), pixels, stride, 0);
-        //    return pixels;
-        //}
-        //#endregion
 
         //フォルダの存在確認、なければマイドキュメントのパスを返す
         private string CheckDir(string path)
@@ -843,15 +800,14 @@ namespace Pixtrim2
 
         private void ButtonSaveDirPaste_Click(object sender, RoutedEventArgs e)
         {
-            //エクスプローラーのパスのコピーからだと " がついているので取り除く
             string str = Clipboard.GetText();
+            //エクスプローラーのパスのコピーからだと " がついているので取り除く
             string target = "\"";
             str = str.Replace(target, "");
             if (System.IO.Directory.Exists(str))
             {
                 //TextBoxSaveDir.Text = str;//これだとBindingが解けてしまうので
                 MyConfig.SavaDir = str;
-
             }
             else
             {
@@ -896,30 +852,25 @@ namespace Pixtrim2
         //画像の保存
         private void ButtonSave_Click(object sender, RoutedEventArgs e)
         {
-            SaveImage();
-        }
-
-        //画像の保存
-        private void SaveImage()
-        {
             if (ListMyBitmapSource.Count == 0) return;
             //保存フォルダの存在チェック
-            if (CheckSaveFolderExists() == false)
+            if (System.IO.Directory.Exists(MyConfig.SavaDir) == false)
             {
                 MessageBox.Show("指定された保存場所が見つからないので保存できないよ");
                 return;
             }
 
             //切り抜き範囲チェック
-            //一つでも範囲外なら保存しない
+            //一つでも範囲外なら保存しないで終了
+            Int32Rect rect = MakeCropRect();
             foreach (var item in ListMyBitmapSource)
             {
-                if (CheckCropRect(item.Source) == false)
+                if (CheckCropRect(item.Source, rect) == false)
                 {
-                    string str = $"切り抜き範囲が画像範囲外なので保存できないよ\n" +
-                        $"{item.Name}";
                     MyListBox.SelectedItem = item;
                     MyListBox.ScrollIntoView(item);
+                    string str = $"切り抜き範囲が画像範囲外なので保存できないよ\n" +
+                        $"{item.Name}";
                     MessageBox.Show(str);
                     return;
                 }
@@ -928,43 +879,36 @@ namespace Pixtrim2
             var savedItems = new List<MyBitmapAndName>();
             //リストの画像全部を保存
             for (int i = 0; i < ListMyBitmapSource.Count; i++)
-            {
-                //保存と自動削除モードなら成功したアイテムをリスト化
-                if (SaveBitmap(ListMyBitmapSource[i]) && MyConfig.IsAutoRemoveSavedItem)
+            {                
+                BitmapSource saveBmp = MakeScaleBitmap(new CroppedBitmap(ListMyBitmapSource[i].Source, rect));
+
+                //保存成功したアイテムをリスト化
+                try
                 {
+                    SaveBitmap(saveBmp, ListMyBitmapSource[i].Name);
                     savedItems.Add(ListMyBitmapSource[i]);
                 }
+                catch (Exception)
+                {
+                    MessageBox.Show("保存できませんでした");
+                }
             }
-            //自動削除
-            foreach (var item in savedItems)
+
+            //アイテムの自動削除
+            if (MyConfig.IsAutoRemoveSavedItem)
             {
-                ListMyBitmapSource.Remove(item);
+                foreach (var item in savedItems)
+                {
+                    ListMyBitmapSource.Remove(item);
+                }
             }
-            MessageBox.Show("保存完了");
+            //MessageBox.Show("保存完了");  
         }
 
-        //保存フォルダの存在チェック
-        private bool CheckSaveFolderExists()
-        {
-            return System.IO.Directory.Exists(MyConfig.SavaDir);
-        }
 
 
-        /// <summary>
-        /// 画像保存の前段階、切り抜きとスケールを行う、切り抜き範囲が適合しなかった場合はnullを返す
-        /// </summary>
-        /// <param name="bitmap"></param>
-        /// <param name="IsRectCheck">切り抜き範囲チェックの有無、falseならチェックしないで切り抜く</param>
-        /// <returns></returns>
-        private BitmapSource MakeSaveBitmap(BitmapSource bitmap, bool IsRectCheck)
+        private BitmapSource MakeScaleBitmap(BitmapSource bitmap)
         {
-            //切り抜き
-            if (IsRectCheck)
-            {
-                if (CheckCropRect(bitmap) == false) return null;
-            }
-            bitmap = MakeCroppedBitmap(bitmap, false);
-            //スケール
             if (MyConfig.SaveScale != 1)
             {
                 bitmap = NearestnaverScale(bitmap, MyConfig.SaveScale);
@@ -972,23 +916,14 @@ namespace Pixtrim2
             return bitmap;
         }
 
+   
         /// <summary>
-        /// リストの画像を保存
+        /// 画像保存
         /// </summary>
-        /// <param name="data"></param>
+        /// <param name="bitmap">切り抜き済みの画像</param>
+        /// <param name="fileName">ファイル名(拡張子なし)</param>
         /// <returns></returns>
-        private bool SaveBitmap(MyBitmapAndName data)
-        {
-            return SaveBitmap(MakeSaveBitmap(data.Source, false), data.Name);
-        }
-
-        /// <summary>
-        /// 切り抜きとスケール済みのBitmapをファイルに保存
-        /// </summary>
-        /// <param name="bitmap">切り抜きとスケール済のBitmap</param>
-        /// <param name="fileName">拡張子付きのファイル名</param>
-        /// <returns></returns>
-        private bool SaveBitmap(BitmapSource bitmap, string fileName)
+        private void SaveBitmap(BitmapSource bitmap, string fileName)
         {
             //CroppedBitmapで切り抜いた画像でBitmapFrame作成して保存
             BitmapEncoder encoder = GetEncoder();
@@ -1002,15 +937,12 @@ namespace Pixtrim2
                 {
                     encoder.Save(fs);
                 }
-                return true;
+
             }
             catch (Exception ex)
             {
-                //MessageBox.Show($"{fileName}はファイル保存できなかったよ\n" +
-                //    $"{ex.Message}");
-                return false;
+                throw ex;
             }
-
         }
 
 
@@ -1065,15 +997,6 @@ namespace Pixtrim2
         }
 
 
-        ////CroppedBitmapを使って切り抜いた画像を作成
-        //private BitmapSource MakeCroppedBitmap(BitmapSource bitmap)
-        //{
-        //    ////切り抜き範囲適合チェック
-        //    //if (CheckCropRect(bitmap) == false) { return null; }
-        //    //切り抜き範囲取得
-        //    var rect = MakeCropRect();
-        //    return new CroppedBitmap(bitmap, rect);
-        //}
         /// <summary>
         /// CroppedBitmapを使って切り抜いた画像を作成、切り抜き範囲チェックありならチェックして範囲外だったらnullを返す
         /// </summary>
@@ -1091,6 +1014,22 @@ namespace Pixtrim2
             var rect = MakeCropRect();
             return new CroppedBitmap(bitmap, rect);
         }
+
+        /// <summary>
+        /// 切り抜き画像を作成、切り抜き範囲が不適切で作成できないときはnullを返す
+        /// </summary>
+        /// <param name="bitmap"></param>
+        /// <returns></returns>
+        private BitmapSource MakeCroppedBitmap(BitmapSource bitmap)
+        {
+            Int32Rect myRect = MakeCropRect();
+            if (CheckCropRect(bitmap, myRect))
+            {
+                return new CroppedBitmap(bitmap, myRect);
+            }
+            else return null;
+        }
+        
 
         private Int32Rect MakeCropRect()
         {
@@ -1122,28 +1061,6 @@ namespace Pixtrim2
             }
         }
 
-        //切り抜き範囲が画像範囲内にあるかどうかのチェック
-        //private bool CheckCropRect()
-        //{
-        //    //切り抜き範囲チェック
-        //    BitmapSource bitmap;
-        //    Int32Rect intRect = MakeCropRect();
-        //    Rect crop = new Rect(intRect.X, intRect.Y, intRect.Width, intRect.Height);
-        //    for (int i = 0; i < ListMyBitmapSource.Count; i++)
-        //    {
-        //        bitmap = ListMyBitmapSource[i].Source;
-        //        if (CheckCropRect(bitmap, crop) == false)
-        //        {
-        //            string str = $"切り抜き範囲が画像範囲外なので保存できない\n" +
-        //                $"{ListMyBitmapSource[i].Name.ToString()}";
-        //            MyListBox.SelectedItem = MyListBox.Items[i];
-        //            MyListBox.ScrollIntoView(MyListBox.Items[i]);
-        //            MessageBox.Show(str);
-        //            return false;
-        //        }
-        //    }
-        //    return true;
-        //}
         private bool CheckCropRect(BitmapSource bitmap)
         {
             Int32Rect intRect = MakeCropRect();
@@ -1151,6 +1068,12 @@ namespace Pixtrim2
             return CheckCropRect(bitmap, crop);
         }
         private bool CheckCropRect(BitmapSource bitmap, Rect crop)
+        {
+            Rect r2 = new Rect(crop.X, crop.Y, crop.Width, crop.Height);
+            Rect r1 = new Rect(0, 0, bitmap.PixelWidth, bitmap.PixelHeight);
+            return r1.Contains(r2);
+        }
+        private bool CheckCropRect(BitmapSource bitmap, Int32Rect crop)
         {
             Rect r2 = new Rect(crop.X, crop.Y, crop.Width, crop.Height);
             Rect r1 = new Rect(0, 0, bitmap.PixelWidth, bitmap.PixelHeight);
@@ -1234,99 +1157,74 @@ namespace Pixtrim2
             BitmapSource bitmap = GetBitmapSource();
             if (bitmap == null) return;
 
-            AddBitmapToList(bitmap);
-        }
+            //自動保存
+            if (MyConfig.IsAutoSave)
+            {
+                AutoSave(bitmap);
+            }
+            //自動保存じゃない
+            //リストに追加
+            else
+            {
+                AddBitmapToList2(bitmap);
+            }
 
+        }
+        private void AutoSave(BitmapSource bitmap)
+        {
+            BitmapSource saveBmp = MakeCroppedBitmap(bitmap);
+            //切り抜き範囲外なら保存しないでリストに追加して終了
+            if (saveBmp == null)
+            {
+                //リストに追加
+                AddBitmapToList2(bitmap);
+                MessageBox.Show("切り抜き範囲が画像の範囲外なので保存できませんでした" + System.Environment.NewLine
+                    + "画像はリストに追加しました", "", MessageBoxButton.OK, MessageBoxImage.Exclamation);
+                return;//終了
+            }
+
+            //拡縮
+            saveBmp = MakeScaleBitmap(saveBmp);
+            try
+            {
+                //保存成功時
+                SaveBitmap(saveBmp, GetStringNowTime());
+                if (MyConfig.IsAutoRemoveSavedItem == false)
+                {
+                    //リストに追加
+                    AddBitmapToList2(bitmap);
+                }
+                //保存アイテム自動削除モードのときはリストに追加しない
+                else
+                {
+                    //音声ファイル再生
+                    if (MyConfig.IsPlaySound == true) { PlaySoundFile(); }
+                }
+            }
+            //保存失敗時
+            catch (Exception)
+            {
+                //リストに追加
+                AddBitmapToList2(bitmap);
+                MessageBox.Show("保存できなかった", "", MessageBoxButton.OK, MessageBoxImage.Exclamation);
+                return;
+            }
+
+        }
         //Bitmapをリストに追加
         private void AddBitmapToList2(BitmapSource bitmap)
         {
-            
-            //自動保存and自動削除モードならリストに追加しない
-            //自動保存に失敗したときだけリストに追加
-            if (MyConfig.IsAutoSave && MyConfig.IsAutoRemoveSavedItem)
-            {
-                if (CheckCropRect(bitmap))
-                {
-                    if (SaveBitmap(MakeSaveBitmap(bitmap, false), GetStringNowTime()))
-                    {
+            //画像と名前をリストに追加
+            var myBitmap = new MyBitmapAndName(bitmap, GetStringNowTime());
+            AddToList(myBitmap);
 
-                    }
-                }
-                else
-                {
-                   
-                }
-            }
-            //リストに追加する
-            else
-            {
+            //Canvasのサイズを画像のサイズに合わせる、これがないとスクロールバーが出ない
+            CanvasSizeSuitable();
 
-            }
+            //音声ファイル再生
+            if (MyConfig.IsPlaySound == true) { PlaySoundFile(); }
         }
-        private void AddBitmapToList(BitmapSource bitmap)
-        {
-            string name = GetStringNowTime();
-
-            //自動保存モードならファイルに保存
-            if (CheckBoxIsAutoSave.IsChecked == true)
-            {
-                //切り抜き範囲チェック
-                if (CheckCropRect(bitmap) == false)
-                {
-                    //画像と名前をリストに追加
-                    var myBitmap = new MyBitmapAndName(bitmap, name);
-                    AddToList(myBitmap);
-
-                    //Canvasのサイズを画像のサイズに合わせる、これがないとスクロールバーが出ない
-                    CanvasSizeSuitable();
-
-                    MessageBox.Show("切り抜き範囲が画像内に収まっていないので保存できませんでした");
-
-                }
-                else
-                {
-                    //保存
-                    if (SaveBitmap(MakeSaveBitmap(bitmap, false), name))
-                    {
-                        //音声ファイル再生
-                        if (MyConfig.IsPlaySound == true) { PlaySoundFile(); }
-                    }
-                    //ほぞんできなかった場合はリストに追加する
-                    else
-                    {
-                        //画像と名前をリストに追加
-                        var myBitmap = new MyBitmapAndName(bitmap, name);
-                        AddToList(myBitmap);
-
-                        //Canvasのサイズを画像のサイズに合わせる、これがないとスクロールバーが出ない
-                        CanvasSizeSuitable();
-
-                        MessageBox.Show("保存できなかった");
-                    }
-                }
-            }
-
-
-            if (MyConfig.IsAutoRemoveSavedItem == false)
-            {
-                //画像と名前をリストに追加
-                var myBitmap = new MyBitmapAndName(bitmap, name);
-                AddToList(myBitmap);
-
-                //Canvasのサイズを画像のサイズに合わせる、これがないとスクロールバーが出ない
-                CanvasSizeSuitable();
-
-                //音声ファイル再生
-                if (MyConfig.IsPlaySound == true) { PlaySoundFile(); }
-            }
-
-
-            ////自動保存and自動削除モードならここまで
-            //if (MyConfig.IsAutoSave && MyConfig.IsAutoRemoveSavedItem) return;
-
-
-
-        }
+       
         //画像と名前をリストに追加
         private void AddToList(MyBitmapAndName myBitmap)
         {
