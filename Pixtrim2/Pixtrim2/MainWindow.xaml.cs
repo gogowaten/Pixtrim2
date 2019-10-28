@@ -629,6 +629,7 @@ namespace Pixtrim2
 
 
         //  画像の拡縮、最近傍補間法
+        //変換後の座標は変換前だとどの座標に当たるのかを求めて、小数点以下切り捨て
         private BitmapSource NearestnaverScale(BitmapSource bitmap, decimal scale)
         {
             int w = bitmap.PixelWidth;
@@ -638,7 +639,7 @@ namespace Pixtrim2
             bitmap.CopyPixels(pixels, stride, 0);
 
 
-            int ww = (int)Math.Round(w * scale);
+            int ww = (int)Math.Round(w * scale);//小数点以下は切り捨て
             int hh = (int)Math.Round(h * scale);
             int stride2 = ww * 4;
             byte[] pixels2 = new byte[hh * stride2];
@@ -663,7 +664,41 @@ namespace Pixtrim2
 
             return BitmapSource.Create(ww, hh, 96, 96, bitmap.Format, null, pixels2, stride2);
         }
+        //四捨五入でニアレストネイバー法
+        private BitmapSource NearestnaverScale2(BitmapSource bitmap, decimal scale)
+        {
+            int w = bitmap.PixelWidth;
+            int h = bitmap.PixelHeight;
+            int stride = w * 4;
+            byte[] pixels = new byte[h * stride];
+            bitmap.CopyPixels(pixels, stride, 0);
 
+
+            int ww = (int)Math.Round(w * scale, MidpointRounding.AwayFromZero);//四捨五入
+            int hh = (int)Math.Round(h * scale, MidpointRounding.AwayFromZero);
+            int stride2 = ww * 4;
+            byte[] pixels2 = new byte[hh * stride2];
+            int motoP, pp;
+            decimal rate = 1 / scale;
+            for (int y = 0; y < hh; y++)
+            {
+                for (int x = 0; x < ww; x++)
+                {
+                    //元の画像の座標は、四捨五入
+                    int motoX = (int)Math.Round(x * rate, MidpointRounding.AwayFromZero);
+                    int motoY = (int)Math.Round(y * rate, MidpointRounding.AwayFromZero);
+                    motoP = motoY * stride + motoX * 4;
+
+                    pp = y * stride2 + x * 4;
+                    pixels2[pp] = pixels[motoP];
+                    pixels2[pp + 1] = pixels[motoP + 1];
+                    pixels2[pp + 2] = pixels[motoP + 2];
+                    pixels2[pp + 3] = pixels[motoP + 3];
+                }
+            }
+
+            return BitmapSource.Create(ww, hh, 96, 96, bitmap.Format, null, pixels2, stride2);
+        }
 
 
 
@@ -676,6 +711,7 @@ namespace Pixtrim2
             {
                 //画像を切り抜いて拡大
                 BitmapSource img = NearestnaverScale(MakeCroppedBitmap(bs.Source, false), MyConfig.SaveScale);
+                //BitmapSource img = NearestnaverScale2(MakeCroppedBitmap(bs.Source, false), MyConfig.SaveScale);
                 //表示ウィンドウの設定して表示
                 window1 = new Window1();
                 window1.MaxWidth = this.ActualWidth;
@@ -879,7 +915,7 @@ namespace Pixtrim2
             var savedItems = new List<MyBitmapAndName>();
             //リストの画像全部を保存
             for (int i = 0; i < ListMyBitmapSource.Count; i++)
-            {                
+            {
                 BitmapSource saveBmp = MakeScaleBitmap(new CroppedBitmap(ListMyBitmapSource[i].Source, rect));
 
                 //保存成功したアイテムをリスト化
@@ -916,7 +952,7 @@ namespace Pixtrim2
             return bitmap;
         }
 
-   
+
         /// <summary>
         /// 画像保存
         /// </summary>
@@ -1029,7 +1065,7 @@ namespace Pixtrim2
             }
             else return null;
         }
-        
+
 
         private Int32Rect MakeCropRect()
         {
@@ -1224,7 +1260,7 @@ namespace Pixtrim2
             //音声ファイル再生
             if (MyConfig.IsPlaySound == true) { PlaySoundFile(); }
         }
-       
+
         //画像と名前をリストに追加
         private void AddToList(MyBitmapAndName myBitmap)
         {
