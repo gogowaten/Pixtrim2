@@ -632,37 +632,42 @@ namespace Pixtrim2
         //変換後の座標は変換前だとどの座標に当たるのかを求めて、小数点以下切り捨て
         private BitmapSource NearestnaverScale(BitmapSource bitmap, decimal scale)
         {
+            //変換前画像用
             int w = bitmap.PixelWidth;
             int h = bitmap.PixelHeight;
             int stride = w * 4;
             byte[] pixels = new byte[h * stride];
             bitmap.CopyPixels(pixels, stride, 0);
 
+            //変換後画像用
+            int atoW = (int)Math.Round(w * scale, MidpointRounding.AwayFromZero);//四捨五入
+            int atoH = (int)Math.Round(h * scale);
+            int atoStride = atoW * 4;
+            byte[] atoPixels = new byte[atoH * atoStride];
 
-            int ww = (int)Math.Round(w * scale);//小数点以下は切り捨て
-            int hh = (int)Math.Round(h * scale);
-            int stride2 = ww * 4;
-            byte[] pixels2 = new byte[hh * stride2];
-            int motoP, pp;
-            decimal rate = 1 / scale;
-            for (int y = 0; y < hh; y++)
+            int P, atoP;
+            //decimal rScale = 1 / scale;//これは違った
+            decimal rScale = w / (decimal)atoW;//変換後から見た倍率、逆倍率
+            for (int y = 0; y < atoH; y++)
             {
-                for (int x = 0; x < ww; x++)
+                for (int x = 0; x < atoW; x++)
                 {
                     //元の画像の座標は小数点以下切り捨てが正解、四捨五入だとあふれる
-                    int motoX = (int)Math.Floor(x * rate);// (int)Math.Round(x * rate) ;
-                    int motoY = (int)Math.Floor(y * rate);
-                    motoP = motoY * stride + motoX * 4;
+                    //int motoX = (int)Math.Floor(x * rate);//
+                    //int motoY = (int)Math.Floor(y * rate);
+                    int motoX = (int)(x * rScale);//intへのキャストは0への丸めで、これで小数点以下切り捨てになる
+                    int motoY = (int)(y * rScale);
+                    P = motoY * stride + motoX * 4;
 
-                    pp = y * stride2 + x * 4;
-                    pixels2[pp] = pixels[motoP];
-                    pixels2[pp + 1] = pixels[motoP + 1];
-                    pixels2[pp + 2] = pixels[motoP + 2];
-                    pixels2[pp + 3] = pixels[motoP + 3];
+                    atoP = y * atoStride + x * 4;
+                    atoPixels[atoP] = pixels[P];
+                    atoPixels[atoP + 1] = pixels[P + 1];
+                    atoPixels[atoP + 2] = pixels[P + 2];
+                    atoPixels[atoP + 3] = pixels[P + 3];
                 }
             }
 
-            return BitmapSource.Create(ww, hh, 96, 96, bitmap.Format, null, pixels2, stride2);
+            return BitmapSource.Create(atoW, atoH, 96, 96, bitmap.Format, null, atoPixels, atoStride);
         }
         //四捨五入でニアレストネイバー法
         private BitmapSource NearestnaverScale2(BitmapSource bitmap, decimal scale)
