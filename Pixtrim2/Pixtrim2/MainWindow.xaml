@@ -17,7 +17,7 @@
       <ColumnDefinition Width="250" Name="Column0"/>
       <ColumnDefinition/>
     </Grid.ColumnDefinitions>
-    <DockPanel Name="DockPanelMain">
+    <DockPanel Grid.Column="0" Name="DockPanelMain">
       <StackPanel DockPanel.Dock="Top">
         <Button x:Name="ButtonTest" Content="Test"/>
         <Button Content="実行" Name="ButtonSave"/>

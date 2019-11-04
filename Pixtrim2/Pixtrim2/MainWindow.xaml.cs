@@ -672,6 +672,7 @@ namespace Pixtrim2
         //四捨五入でニアレストネイバー法
         private BitmapSource NearestnaverScale2(BitmapSource bitmap, decimal scale)
         {
+            //var tb = new TransformedBitmap(bitmap, new ScaleTransform(2, 2));
             int w = bitmap.PixelWidth;
             int h = bitmap.PixelHeight;
             int stride = w * 4;
@@ -717,6 +718,7 @@ namespace Pixtrim2
                 //画像を切り抜いて拡大
                 BitmapSource img = NearestnaverScale(MakeCroppedBitmap(bs.Source, false), MyConfig.SaveScale);
                 //BitmapSource img = NearestnaverScale2(MakeCroppedBitmap(bs.Source, false), MyConfig.SaveScale);
+
                 //表示ウィンドウの設定して表示
                 window1 = new Window1();
                 window1.MaxWidth = this.ActualWidth;
