@@ -26,15 +26,16 @@ namespace Pixtrim2
 
 
         private const int WM_CLIPBOARDUPDATE = 0x031D;
+
         //private const int WM_DRAWCLIPBOARD = 0x308;
 
-        IntPtr handle;
-        HwndSource hwndSource = null;
+        private IntPtr handle;
+        private HwndSource hwndSource = null;
 
 
         public event EventHandler DrawClipboard;
         //イベント起動
-        private void raiseClipboardUpdata()
+        private void RaiseClipboardUpdata()
         {
             DrawClipboard?.Invoke(this, EventArgs.Empty);
         }
@@ -52,7 +53,7 @@ namespace Pixtrim2
         {
             if (msg == WM_CLIPBOARDUPDATE)
             {
-                this.raiseClipboardUpdata();
+                this.RaiseClipboardUpdata();
                 handled = true;
             }
             return IntPtr.Zero;
