@@ -20,7 +20,7 @@
     <DockPanel Grid.Column="0" Name="DockPanelMain">
       <StackPanel DockPanel.Dock="Top">
         <Button x:Name="ButtonTest" Content="Test"/>
-        <Button Content="実行" Name="ButtonSave"/>
+        <Button Content="保存する" Name="ButtonSave" Height="50"/>
         <Button Content="プレビュー" Name="ButtonPreview"/>
         <StackPanel Orientation="Horizontal">
           <TextBlock Text="保存形式"/>

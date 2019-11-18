@@ -33,12 +33,11 @@ namespace Pixtrim2
     public partial class MainWindow : Window
     {
         private const string CONFIG_FILE_NAME = "MyConfig.xml";
-        private ClipboardWatcher ClipboardWatcher;
-        private ObservableCollection<MyBitmapAndName> ListMyBitmapSource;
-        private TrimThumb MyTrimThumb;//切り取り範囲
-        private Window1 window1;//プレビュー用        
-        private Config MyConfig;//設定
-        //private BitmapSource PastBitmap;//前回クリップボードから取得した画像、比較用、不具合回避用→不具合じゃなかったので必要なくなった
+        private ClipboardWatcher ClipboardWatcher;//クリップボード監視クラス
+        private ObservableCollection<MyBitmapAndName> ListMyBitmapSource;//画像リスト
+        private TrimThumb MyTrimThumb;//切り取り範囲クラス
+        private Window1 window1;//プレビュー用
+        private Config MyConfig;//アプリの設定
         private ContextMenu MyListBoxContextMenu;
         private System.Media.SoundPlayer MySound;//画像取得時の音
 
@@ -124,7 +123,7 @@ namespace Pixtrim2
             string fullPath = System.IO.Path.GetDirectoryName(
                 System.Reflection.Assembly.GetExecutingAssembly().Location) +
                 "\\" + CONFIG_FILE_NAME;
-            //ファイルの存在確認して読み込み
+            //アプリの設定ファイルの存在確認して読み込み
             if (System.IO.File.Exists(fullPath))
             {
                 LoadConfig(fullPath);
@@ -140,7 +139,6 @@ namespace Pixtrim2
             else
             {
                 SetDefaultConfig();
-
             }
 
 
@@ -152,7 +150,7 @@ namespace Pixtrim2
 
         }
 
-        //既定値に設定
+        //アプリを既定値で設定にする
         private void SetDefaultConfig()
         {
             MyConfig.Height = 100;
