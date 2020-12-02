@@ -1026,13 +1026,11 @@ namespace Pixtrim2
         {
             var dir = System.IO.Path.Combine(MyConfig.SavaDir, fileName);
             var ex = "." + MyComboBoxSaveImageType.SelectedValue.ToString();
-            var fullPath = dir + ex;
+            var fullPath = dir;
 
-            string bar = "";
             while (System.IO.File.Exists(fullPath))
             {
-                bar += "_";
-                fullPath = dir + bar;
+                fullPath += "_";
             }
             return fullPath + ex;
         }
