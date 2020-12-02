@@ -1032,9 +1032,9 @@ namespace Pixtrim2
             while (System.IO.File.Exists(fullPath))
             {
                 bar += "_";
-                fullPath = dir + bar + ex;
+                fullPath = dir + bar;
             }
-            return fullPath;
+            return fullPath + ex;
         }
 
 
